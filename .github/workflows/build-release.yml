@@ -94,6 +94,12 @@ jobs:
       - name: Run TMDb regression test
         shell: pwsh
         run: |
+          # vcpkg's zlib is a shared library (zlib1.dll), so its bin directory
+          # must be on PATH for the test executable to start.
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
+          $env:PATH = "$vcpkgRoot/installed/x64-windows/bin;$env:PATH"
+
           # The unit test creates a QApplication, so it needs a platform plugin.
           # `offscreen` also works on CI runners without an interactive desktop.
           $env:QT_QPA_PLATFORM = "offscreen"
@@ -129,6 +135,11 @@ jobs:
 
           Copy-Item COPYING $dist/
           Copy-Item third_party/packaging_win/MediaInfo.dll $dist/
+
+          # QuaZip links against vcpkg's shared zlib, so ship its DLL as well.
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
+          Copy-Item "$vcpkgRoot/installed/x64-windows/bin/zlib1.dll" $dist/
 
           $ffmpegUrl = "https://files.ameyering.de/binaries/Windows/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile third_party/packaging_win/ffmpeg.zip
