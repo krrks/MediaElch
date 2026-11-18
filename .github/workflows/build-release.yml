@@ -161,6 +161,8 @@ jobs:
             $deps = (dumpbin /DEPENDENTS $bin) | Select-String '^\s+(\S+\.dll)$' |
               ForEach-Object { $_.Matches[0].Groups[1].Value }
             foreach ($d in $deps) {
+              # API sets are virtual DLLs provided by the OS, not files.
+              if ($d -like "api-ms-*" -or $d -like "ext-ms-*") { continue }
               if (-not (Test-Path (Join-Path $dist $d)) -and
                   -not (Test-Path (Join-Path "$env:SystemRoot/System32" $d))) {
                 $missing += "$d (imported by $(Split-Path $bin -Leaf))"
