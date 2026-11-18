@@ -208,6 +208,17 @@ set_target_properties(mediaelch PROPERTIES OUTPUT_NAME "MediaElch")
 set_target_properties(mediaelch PROPERTIES CXX_VISIBILITY_PRESET hidden)
 mediaelch_post_target_defaults(mediaelch)
 
+if(WIN32)
+  # Build a GUI-subsystem executable. Without this, Windows opens a console
+  # window that stays visible for the whole runtime of MediaElch.
+  set_target_properties(mediaelch PROPERTIES WIN32_EXECUTABLE TRUE)
+  if(MSVC)
+    # Qt applications use C's `main`; the MSVC CRT would otherwise expect
+    # `WinMain` for the WINDOWS subsystem.
+    target_link_options(mediaelch PRIVATE /ENTRY:mainCRTStartup)
+  endif()
+endif()
+
 if(APPLE)
   set_target_properties(mediaelch PROPERTIES
     BUNDLE True
