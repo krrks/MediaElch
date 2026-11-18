@@ -24,7 +24,9 @@ Manager::Manager(QObject* parent) :
     m_concertModel(new ConcertModel(this)),
     m_musicModel(new MusicModel(this)),
     m_database(new Database(this)),
-    m_musicFileSearcher(new MusicFileSearcher(*m_musicPersistence, this)),
+    // `m_musicPersistence` is created in the constructor body below; binding a
+    // reference to it here would dereference a null `std::unique_ptr`.
+    m_musicFileSearcher(nullptr),
     m_iconFont(new MyIconFont(this)),
     m_csvExportModule(new mediaelch::exporter::CsvExportModule(*Settings::instance()))
 {
@@ -38,6 +40,7 @@ Manager::Manager(QObject* parent) :
     m_movieFileSearcher = new mediaelch::MovieFileSearcher(*m_moviePersistence, this);
     m_tvShowFileSearcher = new TvShowFileSearcher(*m_tvShowPersistence, this);
     m_concertFileSearcher = new ConcertFileSearcher(*m_concertPersistence, this);
+    m_musicFileSearcher = new MusicFileSearcher(*m_musicPersistence, this);
 
 
     m_kodiSyncSettings = new mediaelch::KodiSyncSettings(*m_settings, this);
