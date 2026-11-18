@@ -21,6 +21,8 @@ env:
   QT_VERSION: "6.8.3"
   MEDIAINFO_VERSION: "24.06"
   FFMPEG_VERSION: "7.0.2"
+  # Use GitHub Actions cache as sccache backend (shared across runs).
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   windows-x64:
@@ -47,6 +49,9 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Install zlib (vcpkg)
         run: vcpkg install zlib:x64-windows
@@ -76,6 +81,8 @@ jobs:
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" `
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
             -DZLIB_ROOT="$vcpkgRoot/installed/x64-windows" `
             -DQUAZIP_BZIP2=OFF `
             -DENABLE_TESTS=ON `
@@ -86,6 +93,10 @@ jobs:
 
       - name: Run TMDb regression test
         run: build/test/unit/mediaelch_unit_test.exe "[scrapers][tmdb]"
+
+      - name: Show sccache statistics
+        if: always()
+        run: sccache --show-stats
 
       - name: Package
         id: package
