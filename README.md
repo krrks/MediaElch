@@ -1,3 +1,7 @@
+> **Unofficial fork.** This repository is an unofficial public fork of
+> [Komet/MediaElch](https://github.com/Komet/MediaElch) and is licensed under
+> [LGPL-3.0](COPYING). It is not affiliated with or endorsed by the upstream project.
+
 <div align="center">
 	<img alt="MediaElch Logo" src="data/img/MediaElch.png" />
 </div>
@@ -21,7 +25,27 @@ Fanarts are downloaded automatically from fanart.tv.
 
 ## Download
 
-Please visit <https://mediaelch.github.io/mediaelch-doc/download.html>
+Official upstream builds are available at
+<https://mediaelch.github.io/mediaelch-doc/download.html>.
+Unofficial Windows builds from this fork are published under
+[Releases](https://github.com/krrks/MediaElch/releases).
+
+
+## Unofficial Windows builds
+
+This fork builds Windows x64 binaries with the manually triggered
+[`Build Windows release`](.github/workflows/build-release.yml) GitHub Actions
+workflow. The artifacts are unsigned portable ZIP files.
+
+Each release states the exact source commit it was built from and the changes
+it contains. Changes in this fork so far:
+
+- TMDb movie search no longer sends a duplicate `include_adult` query
+  parameter, which TMDb rejected with HTTP 400 (upstream issue
+  [#1992](https://github.com/Komet/MediaElch/issues/1992)). Includes a
+  defensive guard and a regression test.
+- Manual GitHub Actions workflow that builds, packages and publishes the
+  Windows ZIP as a release.
 
 
 ## Documentation
