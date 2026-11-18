@@ -94,25 +94,15 @@ jobs:
       - name: Run TMDb regression test
         shell: pwsh
         run: |
-          # vcpkg's zlib is a shared library (zlib1.dll), so its bin directory
-          # must be on PATH for the test executable to start.
+          # QuaZip is built as a shared library and zlib comes from vcpkg as a
+          # DLL as well, so both directories must be on PATH.
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
-          $env:PATH = "$vcpkgRoot/installed/x64-windows/bin;$env:PATH"
+          $env:PATH = "build/third_party/quazip/quazip;$vcpkgRoot/installed/x64-windows/bin;$env:PATH"
 
           # The unit test creates a QApplication, so it needs a platform plugin.
           # `offscreen` also works on CI runners without an interactive desktop.
           $env:QT_QPA_PLATFORM = "offscreen"
-
-          # Diagnostics: show which imported DLLs cannot be resolved.
-          $deps = (dumpbin /DEPENDENTS build/test/unit/mediaelch_unit_test.exe) |
-            Select-String -Pattern '^\s+(\S+\.dll)$' |
-            ForEach-Object { $_.Matches[0].Groups[1].Value }
-          foreach ($d in $deps) {
-            if (-not (Get-Command $d -ErrorAction SilentlyContinue)) { Write-Host "MISSING DLL: $d" }
-          }
-          Get-ChildItem "$vcpkgRoot/installed/x64-windows/bin" | Select-Object -ExpandProperty Name
-
           & build/test/unit/mediaelch_unit_test.exe "[scrapers][tmdb]" *> unit-test-output.txt
           $code = $LASTEXITCODE
           if ($null -eq $code) { $code = 1 }
@@ -146,10 +136,12 @@ jobs:
           Copy-Item COPYING $dist/
           Copy-Item third_party/packaging_win/MediaInfo.dll $dist/
 
-          # QuaZip links against vcpkg's shared zlib, so ship its DLL as well.
+          # QuaZip and vcpkg's zlib are shared libraries; windeployqt does not
+          # know about them, so they must be shipped next to the executable.
+          Copy-Item build/third_party/quazip/quazip/quazip1-qt6.dll $dist/
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
-          Copy-Item "$vcpkgRoot/installed/x64-windows/bin/zlib1.dll" $dist/
+          Copy-Item "$vcpkgRoot/installed/x64-windows/bin/*.dll" $dist/
 
           $ffmpegUrl = "https://files.ameyering.de/binaries/Windows/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile third_party/packaging_win/ffmpeg.zip
