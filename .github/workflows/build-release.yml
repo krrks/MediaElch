@@ -48,6 +48,9 @@ jobs:
         with:
           arch: x64
 
+      - name: Install zlib (vcpkg)
+        run: vcpkg install zlib:x64-windows
+
       - name: Download MediaInfo SDK and ZenLib
         shell: pwsh
         run: |
@@ -67,9 +70,14 @@ jobs:
       - name: Configure
         shell: pwsh
         run: |
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
+
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" `
+            -DZLIB_ROOT="$vcpkgRoot/installed/x64-windows" `
+            -DQUAZIP_BZIP2=OFF `
             -DENABLE_TESTS=ON `
             -DENABLE_COLOR_OUTPUT=OFF
 
