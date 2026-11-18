@@ -39,7 +39,8 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           arch: win64_msvc2022_64
-          modules: "qt5compat qtmultimedia qtsvg qttools"
+          # qtsvg and qttools are part of Qt's base package for Qt 6.8.
+          modules: "qt5compat qtmultimedia"
           cache: true
 
       - name: Set up MSVC
