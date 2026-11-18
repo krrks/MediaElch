@@ -14,11 +14,13 @@ MusicFilesWidget::MusicFilesWidget(QWidget* parent) :
     QWidget(parent),
     ui(new Ui::MusicFilesWidget),
     m_proxyModel(new MusicProxyModel(this)),
-    m_contextMenu(new QMenu(ui->music))
+    m_contextMenu(nullptr)
 {
     m_instance = this;
     Manager::instance()->setMusicFilesWidget(this);
     ui->setupUi(this);
+    // `ui->music` is only valid after `ui->setupUi(this)`.
+    m_contextMenu = new QMenu(ui->music);
 
 
     m_proxyModel->setSourceModel(Manager::instance()->musicModel());

@@ -20,10 +20,13 @@
 SetsWidget::SetsWidget(QWidget* parent) :
     QWidget(parent),
     ui(new Ui::SetsWidget),
-    m_tableContextMenu(new QMenu(ui->sets)),
+    // `ui->sets` is only valid after `ui->setupUi(this)`, so the menu is
+    // created in the constructor body below.
+    m_tableContextMenu(nullptr),
     m_downloadManager(new DownloadManager(this))
 {
     ui->setupUi(this);
+    m_tableContextMenu = new QMenu(ui->sets);
 
     ui->sets->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->movies->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);

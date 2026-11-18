@@ -12,9 +12,10 @@
 #include "ui/notifications/NotificationBox.h"
 
 GenreWidget::GenreWidget(QWidget* parent) :
-    QWidget(parent), ui(new Ui::GenreWidget), m_tableContextMenu(new QMenu(ui->genres))
+    QWidget(parent), ui(new Ui::GenreWidget), m_tableContextMenu(nullptr)
 {
     ui->setupUi(this);
+    m_tableContextMenu = new QMenu(ui->genres);
     ui->genres->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->movies->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 

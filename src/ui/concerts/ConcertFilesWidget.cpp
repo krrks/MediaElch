@@ -20,12 +20,14 @@ ConcertFilesWidget::ConcertFilesWidget(QWidget* parent) :
     ui(new Ui::ConcertFilesWidget),
     m_concertProxyModel(new ConcertProxyModel(this)),
     m_lastConcert(nullptr),
-    m_contextMenu(new QMenu(ui->files)),
+    m_contextMenu(nullptr),
     m_alphaList(new AlphabeticalList(this)),
     m_mouseIsIn(false)
 {
     m_instance = this;
     ui->setupUi(this);
+    // `ui->files` is only valid after `ui->setupUi(this)`.
+    m_contextMenu = new QMenu(ui->files);
     ui->statusLabel->setText(tr("%n concerts", "", 0));
 
 #ifdef Q_OS_WIN
