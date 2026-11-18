@@ -1,6 +1,7 @@
-# TEMPORARY diagnostic workflow: build with symbols so that the startup-time
-# access violation in MediaElch.exe can be resolved to a source line.
-name: Debug TV crash (temporary)
+# Diagnostic workflow: build a Windows binary with symbols and upload the PDB,
+# so that crash offsets (e.g. from Windows Error Reporting) can be resolved to
+# a function and source line. Keep this workflow available for testing.
+name: Build Windows symbols (diagnostic)
 
 on:
   workflow_dispatch:
