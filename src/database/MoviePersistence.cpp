@@ -5,6 +5,7 @@
 #include "globals/Manager.h"
 #include "log/Log.h"
 
+#include <QByteArray>
 #include <QSqlQuery>
 #include <QSqlRecord>
 
@@ -57,7 +58,7 @@ void MoviePersistence::addMovie(Movie* movie, DirectoryPath path)
                   "hasClearArt, hasCdArt, hasBanner, hasThumb, hasExtraFanarts, discType, path) "
                   "VALUES(:content, :lastModified, :inSeparateFolder, :hasPoster, :hasBackdrop, :hasLogo, "
                   ":hasClearArt, :hasCdArt, :hasBanner, :hasThumb, :hasExtraFanarts, :discType, :path)");
-    query.bindValue(":content", movie->nfoContent().isEmpty() ? "" : movie->nfoContent().toUtf8());
+    query.bindValue(":content", movie->nfoContent().isEmpty() ? QByteArray() : movie->nfoContent().toUtf8());
     query.bindValue(
         ":lastModified", movie->fileLastModified().isNull() ? QDateTime::currentDateTime() : movie->fileLastModified());
     query.bindValue(":inSeparateFolder", (movie->inSeparateFolder() ? 1 : 0));

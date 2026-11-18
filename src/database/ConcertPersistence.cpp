@@ -5,6 +5,7 @@
 #include "globals/Manager.h"
 #include "log/Log.h"
 
+#include <QByteArray>
 #include <QSqlQuery>
 #include <QSqlRecord>
 
@@ -48,7 +49,7 @@ void ConcertPersistence::add(Concert* concert, DirectoryPath path)
     QSqlQuery query(db());
     query.prepare("INSERT INTO concerts(content, inSeparateFolder, path) "
                   "VALUES(:content, :inSeparateFolder, :path)");
-    query.bindValue(":content", concert->nfoContent().isEmpty() ? "" : concert->nfoContent().toUtf8());
+    query.bindValue(":content", concert->nfoContent().isEmpty() ? QByteArray() : concert->nfoContent().toUtf8());
     query.bindValue(":inSeparateFolder", (concert->inSeparateFolder() ? 1 : 0));
     query.bindValue(":path", path.toString().toUtf8());
     query.exec();

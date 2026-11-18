@@ -6,6 +6,7 @@
 #include "log/Log.h"
 #include "media_center/kodi/EpisodeXmlWriter.h"
 
+#include <QByteArray>
 #include <QSqlQuery>
 #include <QSqlRecord>
 
@@ -26,7 +27,7 @@ void TvShowPersistence::add(TvShow* show, DirectoryPath path)
     query.prepare("INSERT INTO shows(dir, content, path) "
                   "VALUES(:dir, :content, :path)");
     query.bindValue(":dir", show->dir().toString().toUtf8());
-    query.bindValue(":content", show->nfoContent().isEmpty() ? "" : show->nfoContent().toUtf8());
+    query.bindValue(":content", show->nfoContent().isEmpty() ? QByteArray() : show->nfoContent().toUtf8());
     query.bindValue(":path", path.toString().toUtf8());
     query.exec();
 
@@ -107,7 +108,7 @@ void TvShowPersistence::add(TvShowEpisode* episode, DirectoryPath path, mediaelc
     QSqlQuery query(db());
     query.prepare("INSERT INTO episodes(content, idShow, path, seasonNumber, episodeNumber) "
                   "VALUES(:content, :idShow, :path, :seasonNumber, :episodeNumber)");
-    query.bindValue(":content", episode->nfoContent().isEmpty() ? "" : episode->nfoContent().toUtf8());
+    query.bindValue(":content", episode->nfoContent().isEmpty() ? QByteArray() : episode->nfoContent().toUtf8());
     query.bindValue(":idShow", idShow.toInt());
     query.bindValue(":path", path.toString().toUtf8());
     query.bindValue(":seasonNumber", episode->seasonNumber().toInt());
@@ -344,7 +345,7 @@ void TvShowPersistence::addEpisodeToShowList(TvShowEpisode* episode,
         const int idEpisode = query.value(0).toInt();
         query.prepare("UPDATE showsEpisodes SET seasonNumber=:seasonNumber, episodeNumber=:episodeNumber, updated=1, "
                       "content=:content WHERE idEpisode=:idEpisode");
-        query.bindValue(":content", xmlContent.isEmpty() ? "" : xmlContent);
+        query.bindValue(":content", xmlContent.isEmpty() ? QByteArray() : xmlContent);
         query.bindValue(":idEpisode", idEpisode);
         query.bindValue(":seasonNumber", episode->seasonNumber().toInt());
         query.bindValue(":episodeNumber", episode->episodeNumber().toInt());
@@ -352,7 +353,7 @@ void TvShowPersistence::addEpisodeToShowList(TvShowEpisode* episode,
     } else {
         query.prepare("INSERT INTO showsEpisodes(content, idShow, seasonNumber, episodeNumber, tmdbid, updated) "
                       "VALUES(:content, :idShow, :seasonNumber, :episodeNumber, :tmdbId, 1)");
-        query.bindValue(":content", xmlContent.isEmpty() ? "" : xmlContent);
+        query.bindValue(":content", xmlContent.isEmpty() ? QByteArray() : xmlContent);
         query.bindValue(":idShow", showsSettingsId.toInt());
         query.bindValue(":seasonNumber", episode->seasonNumber().toInt());
         query.bindValue(":episodeNumber", episode->episodeNumber().toInt());
