@@ -1,0 +1,100 @@
+name: Debug startup crash (temporary)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: "6.8.3"
+  MEDIAINFO_VERSION: "24.06"
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  debug:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          modules: "qt5compat qtmultimedia"
+          cache: true
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - uses: mozilla-actions/sccache-action@v0.0.11
+
+      - name: Install zlib (vcpkg)
+        run: vcpkg install zlib:x64-windows
+
+      - name: Download MediaInfo SDK and ZenLib
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path third_party/packaging_win | Out-Null
+          $url = "https://mediaarea.net/download/binary/libmediainfo0/$env:MEDIAINFO_VERSION/MediaInfo_DLL_$($env:MEDIAINFO_VERSION)_Windows_x64_WithoutInstaller.7z"
+          Invoke-WebRequest -Uri $url -OutFile third_party/packaging_win/MediaInfoDLL.7z
+          7z x -y -othird_party/packaging_win/mediainfo third_party/packaging_win/MediaInfoDLL.7z | Out-Null
+          Copy-Item -Recurse third_party/packaging_win/mediainfo/Developers/Source/MediaInfoDLL ./MediaInfoDLL
+          git clone --quiet --depth=1 --single-branch --branch=master https://github.com/MediaArea/ZenLib tmp/ZenLib
+          Copy-Item -Recurse tmp/ZenLib/Source/ZenLib ./ZenLib
+          Remove-Item -Recurse -Force tmp
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" `
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
+            -DZLIB_ROOT="$vcpkgRoot/installed/x64-windows" `
+            -DQUAZIP_BZIP2=OFF `
+            -DENABLE_TESTS=OFF `
+            -DENABLE_COLOR_OUTPUT=OFF
+
+      - name: Build
+        run: cmake --build build --target mediaelch --parallel
+
+      - name: Run under cdb
+        shell: pwsh
+        run: |
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
+          $env:PATH = "$PWD/build/third_party/quazip/quazip;$vcpkgRoot/installed/x64-windows/bin;$env:PATH"
+          @"
+          .symfix
+          .reload
+          sxe av
+          g
+          !analyze -v
+          kp
+          q
+          "@ | Set-Content -Encoding ascii cdb.txt
+          $cdb = "C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe"
+          if (-not (Test-Path $cdb)) {
+            $cdb = (Get-ChildItem "C:\Program Files*\Windows Kits\10\Debuggers\x64\cdb.exe" -ErrorAction SilentlyContinue |
+              Select-Object -First 1).FullName
+          }
+          if (-not $cdb) { throw "cdb.exe not found" }
+          & $cdb -o -cf cdb.txt build/MediaElch.exe 2>&1 | Tee-Object -FilePath cdb.log
+          Write-Host "===== cdb log ====="
+          Get-Content cdb.log -Tail 200
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdb-log
+          path: cdb.log
