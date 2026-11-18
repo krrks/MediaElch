@@ -131,23 +131,45 @@ jobs:
           $dist = "dist/MediaElch"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
           Copy-Item build/MediaElch.exe $dist/
-          windeployqt --release --compiler-runtime --no-system-d3d-compiler $dist/MediaElch.exe
-
-          Copy-Item COPYING $dist/
-          Copy-Item third_party/packaging_win/MediaInfo.dll $dist/
 
           # QuaZip and vcpkg's zlib are shared libraries; windeployqt does not
           # know about them, so they must be shipped next to the executable.
+          # Copy them *before* running windeployqt and pass them to it: QuaZip
+          # itself depends on Qt5Compat (QTextCodec), which windeployqt would
+          # otherwise not deploy, because MediaElch.exe does not import it.
           Copy-Item build/third_party/quazip/quazip/quazip1-qt6.dll $dist/
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
           Copy-Item "$vcpkgRoot/installed/x64-windows/bin/*.dll" $dist/
+
+          windeployqt --release --compiler-runtime --no-system-d3d-compiler `
+            $dist/MediaElch.exe $dist/quazip1-qt6.dll
+
+          Copy-Item COPYING $dist/
+          Copy-Item third_party/packaging_win/MediaInfo.dll $dist/
 
           $ffmpegUrl = "https://files.ameyering.de/binaries/Windows/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile third_party/packaging_win/ffmpeg.zip
           Expand-Archive -Path third_party/packaging_win/ffmpeg.zip -DestinationPath third_party/packaging_win/ffmpeg -Force
           New-Item -ItemType Directory -Force -Path "$dist/vendor" | Out-Null
           Copy-Item "third_party/packaging_win/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build/bin/ffmpeg.exe" "$dist/vendor/"
+
+          # Sanity check: every directly imported DLL must be part of the package
+          # or be a system DLL. Catches incomplete windeployqt runs early.
+          $missing = @()
+          foreach ($bin in @("$dist/MediaElch.exe", "$dist/quazip1-qt6.dll")) {
+            $deps = (dumpbin /DEPENDENTS $bin) | Select-String '^\s+(\S+\.dll)$' |
+              ForEach-Object { $_.Matches[0].Groups[1].Value }
+            foreach ($d in $deps) {
+              if (-not (Test-Path (Join-Path $dist $d)) -and
+                  -not (Test-Path (Join-Path "$env:SystemRoot/System32" $d))) {
+                $missing += "$d (imported by $(Split-Path $bin -Leaf))"
+              }
+            }
+          }
+          if ($missing.Count -gt 0) {
+            throw "Package is incomplete, missing DLLs: $($missing -join '; ')"
+          }
 
           Compress-Archive -Path $dist -DestinationPath $zip -Force
 
@@ -167,7 +189,11 @@ jobs:
 
             - Source commit: `${{ github.sha }}`
             - Contains the TMDb duplicate `include_adult` fix (upstream issue #1992)
-            - Unsigned build without installer: extract the ZIP and run `MediaElch.exe`
+            - Unsigned build without installer: extract the ZIP into an **empty**
+              directory and run `MediaElch.exe`
+            - Do not extract over an existing MediaElch installation. Official
+              builds use MinGW; mixing their Qt DLLs with this MSVC build makes
+              the application fail to start.
 
             This release was built automatically by GitHub Actions from a manual workflow run.
           files: ${{ steps.package.outputs.zip }}

@@ -37,6 +37,10 @@ This fork builds Windows x64 binaries with the manually triggered
 [`Build Windows release`](.github/workflows/build-release.yml) GitHub Actions
 workflow. The artifacts are unsigned portable ZIP files.
 
+Extract each ZIP into an **empty directory**. Do not unpack it over an existing
+MediaElch installation: the official Windows builds are MinGW-based, and mixing
+their Qt DLLs with this MSVC build makes the application fail to start.
+
 Each release states the exact source commit it was built from and the changes
 it contains. Changes in this fork so far:
 
