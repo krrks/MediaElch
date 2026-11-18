@@ -103,6 +103,16 @@ jobs:
           # The unit test creates a QApplication, so it needs a platform plugin.
           # `offscreen` also works on CI runners without an interactive desktop.
           $env:QT_QPA_PLATFORM = "offscreen"
+
+          # Diagnostics: show which imported DLLs cannot be resolved.
+          $deps = (dumpbin /DEPENDENTS build/test/unit/mediaelch_unit_test.exe) |
+            Select-String -Pattern '^\s+(\S+\.dll)$' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value }
+          foreach ($d in $deps) {
+            if (-not (Get-Command $d -ErrorAction SilentlyContinue)) { Write-Host "MISSING DLL: $d" }
+          }
+          Get-ChildItem "$vcpkgRoot/installed/x64-windows/bin" | Select-Object -ExpandProperty Name
+
           & build/test/unit/mediaelch_unit_test.exe "[scrapers][tmdb]" *> unit-test-output.txt
           $code = $LASTEXITCODE
           if ($null -eq $code) { $code = 1 }
