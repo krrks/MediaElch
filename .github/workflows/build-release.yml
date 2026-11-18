@@ -1,0 +1,131 @@
+name: Build Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag (leave empty to generate v2.12.1-dev-build.<run_number>)"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a pre-release"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: "6.8.3"
+  MEDIAINFO_VERSION: "24.06"
+  FFMPEG_VERSION: "7.0.2"
+
+jobs:
+  windows-x64:
+    name: Windows x64 (Qt 6, MSVC)
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          modules: "qt5compat qtmultimedia qtsvg qttools"
+          cache: true
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Download MediaInfo SDK and ZenLib
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path third_party/packaging_win | Out-Null
+
+          $url = "https://mediaarea.net/download/binary/libmediainfo0/$env:MEDIAINFO_VERSION/MediaInfo_DLL_$($env:MEDIAINFO_VERSION)_Windows_x64_WithoutInstaller.7z"
+          Invoke-WebRequest -Uri $url -OutFile third_party/packaging_win/MediaInfoDLL.7z
+          7z x -y -othird_party/packaging_win/mediainfo third_party/packaging_win/MediaInfoDLL.7z | Out-Null
+          Copy-Item -Recurse third_party/packaging_win/mediainfo/Developers/Source/MediaInfoDLL ./MediaInfoDLL
+          Copy-Item third_party/packaging_win/mediainfo/MediaInfo.dll third_party/packaging_win/MediaInfo.dll
+
+          git clone --quiet --depth=1 --single-branch --branch=master https://github.com/MediaArea/ZenLib tmp/ZenLib
+          Copy-Item -Recurse tmp/ZenLib/Source/ZenLib ./ZenLib
+          Remove-Item -Recurse -Force tmp
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" `
+            -DENABLE_TESTS=ON `
+            -DENABLE_COLOR_OUTPUT=OFF
+
+      - name: Build
+        run: cmake --build build --target mediaelch mediaelch_unit_test --parallel
+
+      - name: Run TMDb regression test
+        run: build/test/unit/mediaelch_unit_test.exe "[scrapers][tmdb]"
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tag = "${{ inputs.release_tag }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = "v2.12.1-dev-build.${{ github.run_number }}"
+          }
+          $zip = "MediaElch_win_qt6_$tag.zip"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+          $dist = "dist/MediaElch"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item build/MediaElch.exe $dist/
+          windeployqt --release --compiler-runtime --no-system-d3d-compiler $dist/MediaElch.exe
+
+          Copy-Item COPYING $dist/
+          Copy-Item third_party/packaging_win/MediaInfo.dll $dist/
+
+          $ffmpegUrl = "https://files.ameyering.de/binaries/Windows/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile third_party/packaging_win/ffmpeg.zip
+          Expand-Archive -Path third_party/packaging_win/ffmpeg.zip -DestinationPath third_party/packaging_win/ffmpeg -Force
+          New-Item -ItemType Directory -Force -Path "$dist/vendor" | Out-Null
+          Copy-Item "third_party/packaging_win/ffmpeg/ffmpeg-$env:FFMPEG_VERSION-essentials_build/bin/ffmpeg.exe" "$dist/vendor/"
+
+          Compress-Archive -Path $dist -DestinationPath $zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MediaElch-windows-x64
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.package.outputs.tag }}
+          name: MediaElch Windows build ${{ github.run_number }}
+          body: |
+            Windows x64 build of MediaElch (Qt 6, MSVC).
+
+            - Source commit: `${{ github.sha }}`
+            - Contains the TMDb duplicate `include_adult` fix (upstream issue #1992)
+            - Unsigned build without installer: extract the ZIP and run `MediaElch.exe`
+
+            This release was built automatically by GitHub Actions from a manual workflow run.
+          files: ${{ steps.package.outputs.zip }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: false
