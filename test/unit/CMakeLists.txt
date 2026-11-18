@@ -37,6 +37,7 @@ target_sources(
     renamer/testPlaceholderParser.cpp
     renamer/testRenamer.cpp
     scrapers/testImdbTvEpisodeParser.cpp
+    scrapers/testTmdbApiUrl.cpp
     scrapers/custom_movie_scraper/StubMovieScraper.cpp
     scrapers/custom_movie_scraper/testCustomMovieScraper.cpp
     scrapers/testMovieMerger.cpp

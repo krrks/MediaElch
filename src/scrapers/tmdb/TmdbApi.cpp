@@ -233,7 +233,12 @@ QUrl TmdbApi::getMovieSearchUrl(const QString& searchStr,
 
     queries.addQueryItem("page", "1"); // Only query first page as of now.
     queries.addQueryItem("query", searchStr);
-    queries.addQueryItem("include_adult", includeAdult ? "true" : "false");
+    // TMDb rejects requests with duplicate query parameters using HTTP 400.
+    // Therefore only add `include_adult` if the caller did not already pass it.
+    // See https://github.com/Komet/MediaElch/issues/1992
+    if (!parameters.contains(ApiUrlParameter::INCLUDE_ADULT)) {
+        queries.addQueryItem("include_adult", includeAdult ? "true" : "false");
+    }
 
     const auto keys = parameters.keys();
     for (const auto& key : keys) {
