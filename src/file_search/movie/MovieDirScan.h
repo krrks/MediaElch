@@ -44,9 +44,10 @@ signals:
     void currentDir(QString);
 
 private:
-    /// Get a list of files in a directory
-    /// \deprecated Remove with scanDir
-    ELCH_DEPRECATED QStringList getFiles(QString path);
+    /// Get a list of files in a directory.
+    /// Only used by the deprecated scanDir(), so it must not be deprecated
+    /// itself (that would only produce warnings inside this class).
+    QStringList getFiles(QString path);
 
 private:
     QHash<QString, QDateTime> m_lastModifications;

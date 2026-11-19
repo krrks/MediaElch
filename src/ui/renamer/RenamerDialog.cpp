@@ -22,10 +22,20 @@ RenamerDialog::RenamerDialog(QWidget* parent) :
     ui->resultsTable->setFont(font);
 #endif
 
-    connect(ui->chkDirectoryNaming, &QCheckBox::stateChanged, this, &RenamerDialog::onChkRenameDirectories);
-    connect(ui->chkFileNaming, &QCheckBox::stateChanged, this, &RenamerDialog::onChkRenameFiles);
-    connect(ui->chkSeasonDirectories, &QCheckBox::stateChanged, this, &RenamerDialog::onChkUseSeasonDirectories);
-    connect(ui->chkReplaceDelimiter, &QCheckBox::stateChanged, this, &RenamerDialog::onChkReplaceDelimiter);
+    // Qt 6.7 deprecated QCheckBox::stateChanged in favour of
+    // QCheckBox::checkStateChanged. The slots only read the checkbox state, so
+    // the signal argument is ignored.
+    const auto connectCheckBox = [this](QCheckBox* box, void (RenamerDialog::*slot)()) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(box, &QCheckBox::checkStateChanged, this, [this, slot](Qt::CheckState) { (this->*slot)(); });
+#else
+        connect(box, &QCheckBox::stateChanged, this, [this, slot](int) { (this->*slot)(); });
+#endif
+    };
+    connectCheckBox(ui->chkDirectoryNaming, &RenamerDialog::onChkRenameDirectories);
+    connectCheckBox(ui->chkFileNaming, &RenamerDialog::onChkRenameFiles);
+    connectCheckBox(ui->chkSeasonDirectories, &RenamerDialog::onChkUseSeasonDirectories);
+    connectCheckBox(ui->chkReplaceDelimiter, &RenamerDialog::onChkReplaceDelimiter);
     connect(ui->btnDryRun, &QAbstractButton::clicked, this, &RenamerDialog::onDryRun);
     connect(ui->btnRename, &QAbstractButton::clicked, this, &RenamerDialog::onRename);
 

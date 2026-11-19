@@ -16,7 +16,7 @@ int countNewlines(const std::string& str)
         ++count;
         ++pos;
     }
-    return count;
+    return static_cast<int>(count);
 }
 } // namespace
 

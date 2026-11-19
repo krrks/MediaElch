@@ -28,7 +28,23 @@ void MovieFilesOrganizer::moveToDirs(mediaelch::DirectoryPath dir)
 
     QVector<QStringList> contents;
     auto* fileSearcher = new mediaelch::MovieDirScan(this);
+    // MovieDirScan::scanDir() is deprecated in favour of
+    // MovieFileSearcher::reload(), but this one-shot scan of a single source
+    // directory has no replacement. Silence the warning for this documented
+    // use.
+#if defined(_MSC_VER)
+#    pragma warning(push)
+#    pragma warning(disable : 4996)
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     fileSearcher->scanDir(path, path, contents, false, true);
+#if defined(_MSC_VER)
+#    pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic pop
+#endif
     fileSearcher->deleteLater();
 
     const auto pos = path.lastIndexOf(QDir::separator());

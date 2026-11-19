@@ -5,6 +5,12 @@ name: Build Windows symbols (diagnostic)
 
 on:
   workflow_dispatch:
+    inputs:
+      use_cache:
+        description: "Use sccache (GitHub Actions cache). Disable to see all compiler warnings."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -41,6 +47,7 @@ jobs:
           arch: x64
 
       - name: Set up sccache
+        if: ${{ inputs.use_cache }}
         uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Install zlib (vcpkg)
@@ -69,24 +76,31 @@ jobs:
 
           # /Z7 instead of /Zi: debug info is embedded in the object files, so
           # parallel sccache compiles do not fight over a shared PDB (C1041).
-          cmake -S . -B build -G Ninja `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_CXX_FLAGS_RELEASE="/O2 /Ob2 /DNDEBUG /Z7" `
-            -DCMAKE_C_FLAGS_RELEASE="/O2 /Ob2 /DNDEBUG /Z7" `
-            -DCMAKE_EXE_LINKER_FLAGS="/DEBUG" `
-            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
-            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
-            -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" `
-            -DZLIB_ROOT="$vcpkgRoot/installed/x64-windows" `
-            -DQUAZIP_BZIP2=OFF `
-            -DENABLE_TESTS=OFF `
-            -DENABLE_COLOR_OUTPUT=OFF
+          $cmakeArgs = @(
+            "-S", ".", "-B", "build", "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG /Z7",
+            "-DCMAKE_C_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG /Z7",
+            "-DCMAKE_EXE_LINKER_FLAGS=/DEBUG",
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR",
+            "-DZLIB_ROOT=$vcpkgRoot/installed/x64-windows",
+            "-DQUAZIP_BZIP2=OFF",
+            "-DENABLE_TESTS=ON",
+            "-DENABLE_COLOR_OUTPUT=OFF"
+          )
+          if ("${{ inputs.use_cache }}" -eq "true") {
+            $cmakeArgs += @(
+              "-DCMAKE_C_COMPILER_LAUNCHER=sccache",
+              "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache"
+            )
+          }
+          cmake @cmakeArgs
 
       - name: Build
-        run: cmake --build build --target mediaelch --parallel
+        run: cmake --build build --target mediaelch mediaelch_unit_test --parallel
 
       - name: Show sccache statistics
-        if: always()
+        if: always() && inputs.use_cache
         run: sccache --show-stats
 
       - name: Upload executable and PDB

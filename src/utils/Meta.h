@@ -4,6 +4,7 @@
 // This file must not depend on Globals.h or any other MediaElch header.
 
 #include <QtGlobal>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
@@ -219,7 +220,9 @@ struct int_conversion<Unsigned, Signed, From, To>
     static constexpr To convert(From from)
     {
         // TODO: No check if sizeof(To) >= sizeof(From)
-        MediaElch_Assert(from <= std::numeric_limits<To>::max());
+        // Compare as unsigned: both values are non-negative here.
+        MediaElch_Assert(static_cast<std::uintmax_t>(from)
+                         <= static_cast<std::uintmax_t>(std::numeric_limits<To>::max()));
         return static_cast<To>(from);
     }
 };
@@ -230,7 +233,8 @@ struct int_conversion<Signed, Unsigned, From, To>
     static constexpr To convert(From from)
     {
         MediaElch_Assert(from >= 0);
-        MediaElch_Assert(from <= std::numeric_limits<To>::max());
+        MediaElch_Assert(static_cast<std::uintmax_t>(from)
+                         <= static_cast<std::uintmax_t>(std::numeric_limits<To>::max()));
         return static_cast<To>(from);
     }
 };
