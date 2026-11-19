@@ -6,8 +6,23 @@
 #include <QNetworkReply>
 #include <QXmlStreamReader>
 
+// QuaZip's Qt compatibility header constructs a QDateTime from a QDate/QTime
+// pair, which Qt 6.8 deprecates. The header is vendored third-party code, so
+// silence the deprecation warning for these includes only.
+#if defined(_MSC_VER)
+#    pragma warning(push)
+#    pragma warning(disable : 4996)
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include "quazip/quazip.h"
 #include "quazip/quazipfile.h"
+#if defined(_MSC_VER)
+#    pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic pop
+#endif
 
 #include "globals/VersionInfo.h"
 #include "log/Log.h"

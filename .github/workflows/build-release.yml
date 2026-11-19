@@ -54,7 +54,13 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Install zlib (vcpkg)
-        run: vcpkg install zlib:x64-windows
+        shell: pwsh
+        run: |
+          # The runner sets VCPKG_ROOT to Visual Studio's bundled vcpkg, which
+          # differs from the installation used here. Align them to get rid of
+          # vcpkg's "using detected vcpkg root" warning.
+          if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT }
+          vcpkg install zlib:x64-windows
 
       - name: Download MediaInfo SDK and ZenLib
         shell: pwsh
