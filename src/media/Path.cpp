@@ -11,8 +11,10 @@ QString DirectoryPath::toNativePathString() const
 
 bool DirectoryPath::isParentFolderOf(const DirectoryPath& child) const
 {
-    QString parentPath = toString();
-    QString childPath = child.toString();
+    // Resolve "." and ".." components before comparing. QDir::absolutePath()
+    // does not guarantee that on every platform (notably on Windows).
+    QString parentPath = QDir::cleanPath(toString());
+    QString childPath = QDir::cleanPath(child.toString());
     if (!parentPath.endsWith('/')) {
         parentPath += '/';
     }
