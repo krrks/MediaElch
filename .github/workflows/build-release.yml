@@ -13,6 +13,11 @@ on:
         required: false
         default: true
         type: boolean
+      test_config:
+        description: "Optional test config (JSON, relative to .ci/win/tests). Leave empty to run all *.test.ps1 scripts."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -99,9 +104,15 @@ jobs:
 
       - name: Run tests
         shell: pwsh
-        # The test stage is kept in a script so that tests can be changed
-        # without touching the workflow.
-        run: ./.ci/win/run_tests.ps1 -BuildDir build
+        # The test stage is kept in scripts so that tests can be changed
+        # without touching the workflow. Without -Config, all
+        # .ci/win/tests/*.test.ps1 scripts run.
+        run: |
+          $testArgs = @("-BuildDir", "build")
+          if ("${{ inputs.test_config }}" -ne "") {
+            $testArgs += @("-Config", "${{ inputs.test_config }}")
+          }
+          ./.ci/win/run_tests.ps1 @testArgs
 
       - name: Show sccache statistics
         if: always()

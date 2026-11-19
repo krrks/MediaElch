@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "unit",
+      "script": "10-unit.test.ps1"
+    },
+    {
+      "name": "unit-tmdb",
+      "script": "10-unit.test.ps1",
+      "args": ["-Filter", "[scrapers][tmdb]"]
+    }
+  ]
+}
