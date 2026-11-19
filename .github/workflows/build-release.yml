@@ -91,24 +91,11 @@ jobs:
       - name: Build
         run: cmake --build build --target mediaelch mediaelch_unit_test --parallel
 
-      - name: Run TMDb regression test
+      - name: Run tests
         shell: pwsh
-        run: |
-          # QuaZip is built as a shared library and zlib comes from vcpkg as a
-          # DLL as well, so both directories must be on PATH.
-          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
-          if (-not $vcpkgRoot) { $vcpkgRoot = "C:/vcpkg" }
-          $env:PATH = "build/third_party/quazip/quazip;$vcpkgRoot/installed/x64-windows/bin;$env:PATH"
-
-          # The unit test creates a QApplication, so it needs a platform plugin.
-          # `offscreen` also works on CI runners without an interactive desktop.
-          $env:QT_QPA_PLATFORM = "offscreen"
-          & build/test/unit/mediaelch_unit_test.exe "[scrapers][tmdb]" *> unit-test-output.txt
-          $code = $LASTEXITCODE
-          if ($null -eq $code) { $code = 1 }
-          if (Test-Path unit-test-output.txt) { Get-Content unit-test-output.txt }
-          Write-Host "mediaelch_unit_test exit code: $code"
-          exit $code
+        # The test stage is kept in a script so that tests can be changed
+        # without touching the workflow.
+        run: ./.ci/win/run_tests.ps1 -BuildDir build
 
       - name: Show sccache statistics
         if: always()
