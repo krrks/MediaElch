@@ -74,3 +74,55 @@ We're active in the [Kodi forum](https://forum.kodi.tv/showthread.php?tid=136333
 and on [GitHub](https://github.com/Komet/MediaElch).
 If you want to report a bug, please see
 ["Bug Reports"](https://mediaelch.github.io/mediaelch-doc/contributing/bug-reports.html).
+
+
+## AI-maintained fork
+
+This repository is an **AI-maintained fork** of MediaElch. The changes made on
+top of upstream are developed and reviewed with the assistance of an AI coding
+agent (Claude by Anthropic) and are committed to this repository, so they can
+be inspected in the git history. The fork remains unofficial and is not
+affiliated with or endorsed by the upstream project.
+
+### Windows test stage
+
+The tests are not hard-coded in the GitHub Actions workflow. After building,
+the `Build Windows release` workflow runs
+[`.ci/win/run_tests.ps1`](.ci/win/run_tests.ps1), which supports two modes:
+
+- **Run all scripts:** every `*.test.ps1` file in
+  [`.ci/win/tests/`](.ci/win/tests/) is executed in lexicographic file-name
+  order (use numeric prefixes to control the order).
+- **Run a selection:** pass `-Config <file.json>` to run only the entries
+  listed in a JSON configuration file. See
+  [`config.example.json`](.ci/win/tests/config.example.json) for the format.
+
+Every test script runs in its own process; its exit code decides whether the
+test passed. The runner prints a summary and exits non-zero if any test failed.
+`-Only <name>` restricts the run to selected tests, and `-KeepGoing` continues
+after a failure.
+
+Run the test stage locally from the repository root after building:
+
+```powershell
+./.ci/win/run_tests.ps1 -BuildDir build
+./.ci/win/run_tests.ps1 -BuildDir build -Only unit-tmdb
+```
+
+Adding a test is done by creating `.ci/win/tests/NN-name.test.ps1` (the numeric
+prefix controls the order). The script receives `-BuildDir` and must exit
+non-zero on failure. Shared setup (QuaZip/zlib on `PATH`, Qt's offscreen
+platform plugin) is provided by `tests/test_utils.ps1`.
+
+The workflow exposes an optional `test_config` input; when it is empty, all
+`*.test.ps1` scripts run.
+
+### Crash diagnostics
+
+The manually triggered
+[`Build Windows symbols (diagnostic)`](.github/workflows/debug-tv-crash.yml)
+workflow builds a Release binary with symbols and uploads `MediaElch.exe` and
+`MediaElch.pdb`. It can be used to resolve a crash offset reported by Windows
+Error Reporting (for example `MediaElch.exe+0x54F35`) to a function and source
+line. Its `use_cache` input can be disabled to force a full, uncached compile
+and surface every compiler warning.
