@@ -108,9 +108,11 @@ jobs:
         # without touching the workflow. Without -Config, all
         # .ci/win/tests/*.test.ps1 scripts run.
         run: |
-          $testArgs = @("-BuildDir", "build")
+          # Splat a hashtable: array splatting would pass the values as
+          # positional arguments instead of named parameters.
+          $testArgs = @{ BuildDir = "build" }
           if ("${{ inputs.test_config }}" -ne "") {
-            $testArgs += @("-Config", "${{ inputs.test_config }}")
+            $testArgs.Config = "${{ inputs.test_config }}"
           }
           ./.ci/win/run_tests.ps1 @testArgs
 
