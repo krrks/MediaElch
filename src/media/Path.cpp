@@ -4,6 +4,29 @@
 
 namespace mediaelch {
 
+namespace {
+
+/// Normalizes a path so that different spellings of the same directory compare
+/// equal.
+QString normalizedForComparison(const QString& path)
+{
+    QString normalized = QDir::cleanPath(path);
+#ifdef Q_OS_WIN
+    // QDir::absolutePath() returns rooted paths such as "/movies" unchanged
+    // when they are already clean, but drive-qualified paths ("D:/movies")
+    // once "." or ".." components have to be resolved. Anchor drive-less
+    // rooted paths to the current drive so both spellings are comparable.
+    const QString currentPath = QDir::currentPath();
+    if (normalized.startsWith('/') && !normalized.startsWith("//") && currentPath.size() >= 2
+        && currentPath.at(1) == ':') {
+        normalized = QDir::cleanPath(currentPath.left(2) + normalized);
+    }
+#endif
+    return normalized;
+}
+
+} // namespace
+
 QString DirectoryPath::toNativePathString() const
 {
     return QDir::toNativeSeparators(toString());
@@ -11,10 +34,9 @@ QString DirectoryPath::toNativePathString() const
 
 bool DirectoryPath::isParentFolderOf(const DirectoryPath& child) const
 {
-    // Resolve "." and ".." components before comparing. QDir::absolutePath()
-    // does not guarantee that on every platform (notably on Windows).
-    QString parentPath = QDir::cleanPath(toString());
-    QString childPath = QDir::cleanPath(child.toString());
+    // Normalize both paths (resolve "." and "..") before comparing them.
+    QString parentPath = normalizedForComparison(toString());
+    QString childPath = normalizedForComparison(child.toString());
     if (!parentPath.endsWith('/')) {
         parentPath += '/';
     }
